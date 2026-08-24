@@ -7,6 +7,7 @@ import sys
 import os
 import json
 import uuid
+import hmac
 from html import escape
 from urllib.parse import urlparse
 from time import time
@@ -50,6 +51,11 @@ HTTPS_REDIRECT_PORT = int(os.getenv('SCANNER_HTTPS_PORT', os.getenv('SCANNER_POR
 SSL_MODE = os.getenv('SCANNER_SSL_MODE', '').strip().lower()  # '', 'adhoc', 'cert'
 SSL_CERT_PATH = os.getenv('SCANNER_SSL_CERT', '').strip()
 SSL_KEY_PATH = os.getenv('SCANNER_SSL_KEY', '').strip()
+# Declaração explícita do admin de que HTTPS está em uso (ex: terminação TLS
+# num proxy/CDN à frente, sem TRUST_PROXY configurado corretamente) - evita
+# que HSTS/CSP upgrade dependam só de request.is_secure, que fica sempre
+# False nesse cenário.
+HTTPS_DECLARED = os.getenv('SCANNER_HTTPS_DECLARED', '').lower() in ('1', 'true', 'yes') or bool(SSL_MODE)
 TRUST_PROXY = os.getenv('SCANNER_TRUST_PROXY', '').lower() in ('1', 'true', 'yes')
 PROXY_FIX_X_FOR = int(os.getenv('SCANNER_PROXY_FIX_X_FOR', '1'))
 PROXY_FIX_X_PROTO = int(os.getenv('SCANNER_PROXY_FIX_X_PROTO', '1'))
@@ -75,13 +81,21 @@ if TRUST_PROXY:
 
 @app.after_request
 def _security_headers(response):
-    """Anti-clickjacking, MIME sniffing, CSP e HTTPS (evita achados do scanner)."""
+    """Anti-clickjacking, MIME sniffing, CSP e HTTPS (evita achados do scanner).
+
+    request.is_secure só reflete https corretamente se TRUST_PROXY=1 estiver
+    configurado (ProxyFix lendo X-Forwarded-Proto) ou se o Flask estiver
+    servindo TLS diretamente (ssl_context). Sem isso, atrás de um proxy/CDN
+    que termina TLS, is_secure fica sempre False e HSTS/CSP nunca reforçam -
+    por isso também consideramos HTTPS_DECLARED (config explícita do admin)."""
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['X-Permitted-Cross-Domain-Policies'] = 'none'
     response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
     response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
+
+    is_https = request.is_secure or HTTPS_DECLARED
 
     # CSP reforcada: reduz XSS, clickjacking e mixed content.
     csp = (
@@ -94,11 +108,11 @@ def _security_headers(response):
         "connect-src 'self'; "
         "frame-src 'none'"
     )
-    if request.is_secure:
+    if is_https:
         csp += '; upgrade-insecure-requests; block-all-mixed-content'
     response.headers['Content-Security-Policy'] = csp
     # HSTS: em produção (HTTPS) ativa; em localhost não é enviado
-    if request.is_secure:
+    if is_https:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
     return response
 
@@ -155,21 +169,46 @@ def _check_internal_header():
     if not INTERNAL_HEADER_VALUE:
         return True
     incoming = request.headers.get(INTERNAL_HEADER_NAME, '').strip()
-    return incoming == INTERNAL_HEADER_VALUE
+    return hmac.compare_digest(incoming, INTERNAL_HEADER_VALUE)
+
+
+REDIS_URL = os.getenv('SCANNER_REDIS_URL', '').strip()
+_redis_client = None
+if REDIS_URL:
+    try:
+        import redis as _redis_module
+        _redis_client = _redis_module.from_url(REDIS_URL, socket_timeout=1, socket_connect_timeout=1)
+        _redis_client.ping()
+    except Exception:
+        _redis_client = None  # fallback silencioso pra memória se Redis não estiver disponível
 
 
 def _rate_limit() -> bool:
     """
-    Rate limit simples por IP em memória, para evitar abuso da interface web.
+    Rate limit por IP. Usa Redis (SCANNER_REDIS_URL) se configurado e
+    disponível - sobrevive a restart do processo e funciona com múltiplos
+    workers/instâncias. Sem Redis, cai pro fallback em memória (só serve
+    pra um único processo, reseta ao reiniciar).
     Retorna True se a requisição está dentro do limite.
     """
     if RATE_LIMIT_MAX <= 0 or RATE_LIMIT_WINDOW <= 0:
         return True
 
-    now = time()
     ip = request.remote_addr or 'unknown'
+
+    if _redis_client is not None:
+        try:
+            key = f'scanner:ratelimit:{ip}'
+            pipe = _redis_client.pipeline()
+            pipe.incr(key, 1)
+            pipe.expire(key, RATE_LIMIT_WINDOW, nx=True)
+            count, _ = pipe.execute()
+            return int(count) <= RATE_LIMIT_MAX
+        except Exception:
+            pass  # Redis falhou nessa chamada - cai pro fallback em memória abaixo
+
+    now = time()
     bucket = _RATE_LIMIT_BUCKETS.get(ip, [])
-    # limpa entradas antigas
     bucket = [t for t in bucket if now - t < RATE_LIMIT_WINDOW]
     if len(bucket) >= RATE_LIMIT_MAX:
         _RATE_LIMIT_BUCKETS[ip] = bucket
@@ -361,7 +400,7 @@ def _check_web_token() -> bool:
         request.headers.get('X-Scanner-Token', '').strip()
         or request.args.get('token', '').strip()
     )
-    return incoming == WEB_TOKEN
+    return hmac.compare_digest(incoming, WEB_TOKEN)
 
 
 def _new_job(url: str, checks: list[str]) -> str:
@@ -736,7 +775,11 @@ def run_scan():
     e2e_advanced = bool(data.get('e2e_advanced')) and E2E_ADVANCED_AVAILABLE
     e2e_profile = (data.get('e2e_profile') or '').strip() or None
     cloudflare_timeout = data.get('cloudflare_timeout')
-    cloudflare_timeout_ms = int(cloudflare_timeout) if cloudflare_timeout not in (None, '') else 60_000
+    try:
+        cloudflare_timeout_ms = int(cloudflare_timeout) if cloudflare_timeout not in (None, '') else 60_000
+    except (TypeError, ValueError):
+        return jsonify({'error': 'cloudflare_timeout deve ser um número inteiro (ms)'}), 400
+    cloudflare_timeout_ms = max(1_000, min(cloudflare_timeout_ms, 300_000))  # 1s..5min - evita 0/negativo/absurdo
 
     if not url:
         return jsonify({'error': 'URL é obrigatória'}), 400
@@ -802,7 +845,7 @@ def api_scan_cancel(job_id: str):
 if __name__ == '__main__':
     host = os.getenv('SCANNER_HOST', '127.0.0.1')
     port = int(os.getenv('SCANNER_PORT', '5000'))
-    debug = os.getenv('SCANNER_DEBUG', '1').lower() not in ('0', 'false', 'no')
+    debug = os.getenv('SCANNER_DEBUG', '0').lower() not in ('0', 'false', 'no')
     ssl_context = None
     if SSL_MODE == 'adhoc':
         ssl_context = 'adhoc'
@@ -816,5 +859,8 @@ if __name__ == '__main__':
     print(f'\n  Interface: {scheme}://{host}:{port}\n')
     if FORCE_HTTPS_REDIRECT and not ssl_context:
         print('  Aviso: SCANNER_FORCE_HTTPS_REDIRECT=1 ignorado sem SSL habilitado.')
+    if debug and host not in ('127.0.0.1', 'localhost', '::1'):
+        print('  AVISO CRÍTICO: SCANNER_DEBUG=1 com host não-local - debugger do Werkzeug '
+              'permite execução remota de código se exposto. Não use em produção.')
 
     app.run(host=host, port=port, debug=debug, ssl_context=ssl_context)
