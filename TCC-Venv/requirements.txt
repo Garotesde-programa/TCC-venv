@@ -3,6 +3,13 @@
 
 flask>=2.0
 
+# Opcional: confirmação real de XSS via browser headless (recomendado)
+# playwright>=1.40.0
+# Depois: python -m playwright install chromium
+
+# Opcional: rate limit distribuído (SCANNER_REDIS_URL) - sem isso, cai pra memória
+# redis>=5.0
+
 # Opcional: E2E avançado (Turnstile, profile, Bézier)
 # playwright>=1.40.0
 # Depois: python -m playwright install chromium
