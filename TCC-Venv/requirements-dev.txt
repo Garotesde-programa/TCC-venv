@@ -1,0 +1,5 @@
+# Dependências apenas para rodar a suite de testes (não necessárias em produção).
+# Instalar com: pip install -r requirements-dev.txt
+pytest>=7.4
+playwright>=1.40.0
+# depois: python -m playwright install chromium

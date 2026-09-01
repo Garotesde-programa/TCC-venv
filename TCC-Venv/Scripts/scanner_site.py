@@ -22,7 +22,7 @@ import uuid
 from urllib.parse import urljoin, urlparse
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
-SCANNER_VERSION = '2.0.0'
+SCANNER_VERSION = '3.1.0'
 
 # Configuração (ajustáveis por variáveis de ambiente)
 TIMEOUT = int(os.getenv('SCANNER_TIMEOUT', '5'))
@@ -237,6 +237,27 @@ _SAFE_OPENER = urllib.request.build_opener(
 )
 
 
+_EXPLICIT_SCHEME_RE = re.compile(r'^([a-zA-Z][a-zA-Z0-9+.\-]*):(//)?')
+
+
+def _looks_like_explicit_scheme(raw: str) -> str | None:
+    """
+    Detecta se `raw` já vem com um esquema de URI explícito (ftp://, file://,
+    javascript:, etc.) - para não confundir com "host:porta" (ex: example.com:8080),
+    que também bate num regex simples de scheme por causa do ':'.
+    Heurística: se não tem "//" e o que vem depois do ':' começa com dígito,
+    é porta, não esquema.
+    """
+    m = _EXPLICIT_SCHEME_RE.match(raw)
+    if not m:
+        return None
+    scheme, slashslash = m.group(1), m.group(2)
+    rest = raw[m.end():]
+    if not slashslash and rest[:1].isdigit():
+        return None  # ex: "example.com:8080/path" -> porta, não esquema
+    return scheme.lower()
+
+
 def validate_scan_target(url: str) -> tuple[str | None, str | None]:
     """
     Valida e normaliza URL de varredura.
@@ -247,8 +268,17 @@ def validate_scan_target(url: str) -> tuple[str | None, str | None]:
         return None, 'URL é obrigatória'
     if len(raw) > 2048:
         return None, 'URL muito longa'
-    if not raw.startswith(('http://', 'https://')):
+
+    # Antes: só prefixava "https://" se não começasse com http(s)://, o que
+    # transformava "ftp://x" em "https://ftp://x" (URL corrompida que ESCAPAVA
+    # da checagem de esquema abaixo, em vez de ser rejeitada). Agora detecta
+    # o esquema explícito primeiro.
+    explicit_scheme = _looks_like_explicit_scheme(raw)
+    if explicit_scheme is not None and explicit_scheme not in ('http', 'https'):
+        return None, 'Apenas HTTP/HTTPS são suportados'
+    if explicit_scheme is None:
         raw = 'https://' + raw
+
     parsed = urlparse(raw)
     if parsed.scheme not in ('http', 'https'):
         return None, 'Apenas HTTP/HTTPS são suportados'

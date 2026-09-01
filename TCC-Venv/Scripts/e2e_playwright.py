@@ -89,17 +89,38 @@ def _ease_in_out(t: float) -> float:
     return 1 - pow(-2 * t + 2, 2) / 2
 
 
+# Playwright não expõe page.mouse.position (não existe essa API) - rastreamos
+# manualmente a última posição conhecida por página, senão todo movimento
+# Bézier "realista" sempre partiria de (0,0), o que é exatamente o padrão
+# robótico (teleporte do canto) que a detecção de bot procura.
+_LAST_MOUSE_POS: dict[int, tuple[float, float]] = {}
+
+
+def _get_mouse_pos(page) -> tuple[float, float]:
+    key = id(page)
+    if key not in _LAST_MOUSE_POS:
+        # Sem posição conhecida ainda: usa o centro do viewport como ponto de
+        # partida plausível, não o canto (0,0).
+        vp = page.viewport_size or {"width": 1920, "height": 1080}
+        _LAST_MOUSE_POS[key] = (vp.get("width", 1920) / 2, vp.get("height", 1080) / 2)
+        try:
+            page.once("close", lambda: _LAST_MOUSE_POS.pop(key, None))
+        except Exception:
+            pass
+    return _LAST_MOUSE_POS[key]
+
+
+def _set_mouse_pos(page, x: float, y: float) -> None:
+    _LAST_MOUSE_POS[id(page)] = (x, y)
+
+
 def mouse_move_bezier(page, x_end: float, y_end: float, steps: int = 40,
                       speed_variance: float = 0.3) -> None:
     """
     Move o mouse até (x_end, y_end) por uma curva de Bézier com velocidade variável.
     Reduz desconfiança de automação.
     """
-    try:
-        pos = page.mouse.position
-    except Exception:
-        pos = {"x": 0, "y": 0}
-    x0, y0 = float(pos.get("x", 0)), float(pos.get("y", 0))
+    x0, y0 = _get_mouse_pos(page)
 
     # Controles aleatórios entre início e fim com desvio
     dx = x_end - x0
@@ -120,6 +141,7 @@ def mouse_move_bezier(page, x_end: float, y_end: float, steps: int = 40,
         x, y = _bezier_point(t, p0, p1, p2, p3)
         page.mouse.move(x, y)
         _human_sleep(0.008, 0.025)
+    _set_mouse_pos(page, x_end, y_end)
 
 
 def scroll_realistic(page, delta_y: int = 400, steps: int = 8) -> None:
@@ -339,8 +361,6 @@ def run_e2e(
         else:
             context.close()
         p.stop()
-
-    return token
 
 
 if __name__ == "__main__":

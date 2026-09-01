@@ -103,13 +103,6 @@ h1 {
     letter-spacing: 0.08em;
 }
 
-.legal-consent {
-    margin: 1rem 0;
-    padding: 0.85rem 1rem;
-    border: 1px solid rgba(248, 113, 113, 0.35);
-    border-radius: 10px;
-    background: rgba(248, 113, 113, 0.06);
-}
 
 .consent-label {
     display: flex;

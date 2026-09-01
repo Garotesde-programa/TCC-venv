@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Plataforma de segurança para análise e monitoramento de aplicações web.">
+  <title>Venv project</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="noise"></div>
+
+  <header class="header" id="top">
+    <nav class="nav container">
+      <a class="brand" href="#top" aria-label="Página inicial">
+        <span class="brand-mark"><span></span></span>
+        <span>PROJECT<span class="muted">/SEC</span></span>
+      </a>
+
+      <button class="menu-toggle" aria-label="Abrir menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+
+      <div class="nav-links">
+        <a href="#platform">Plataforma</a>
+        <a href="#features">Recursos</a>
+        <a href="#workflow">Como funciona</a>
+        <a href="#pricing">Planos</a>
+      </div>
+
+      <a class="btn btn-small btn-outline nav-cta" href="#contact">Falar com especialista <span>↗</span></a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-grid"></div>
+      <div class="hero-glow"></div>
+      <div class="container hero-content">
+        <div class="eyebrow reveal"><span class="pulse"></span> APPLICATION SECURITY PLATFORM</div>
+        <h1 class="reveal">Encontre vulnerabilidades<br><em>antes que encontrem você.</em></h1>
+        <p class="hero-copy reveal">
+          Uma plataforma inteligente para analisar aplicações web, identificar riscos
+          e transformar descobertas técnicas em ações claras para sua equipe.
+        </p>
+        <div class="hero-actions reveal">
+          <a class="btn btn-primary" href="#contact">Solicitar demonstração <span>→</span></a>
+          <a class="btn btn-ghost" href="#platform">Explorar plataforma <span>↓</span></a>
+        </div>
+
+        <div class="hero-meta reveal">
+          <div><strong>01</strong><span>Scan automatizado</span></div>
+          <div><strong>02</strong><span>Priorização de riscos</span></div>
+          <div><strong>03</strong><span>Relatórios acionáveis</span></div>
+        </div>
+      </div>
+      <div class="hero-bottom-line"></div>
+    </section>
+
+    <section class="trust">
+      <div class="container trust-inner">
+        <span>DESIGNED FOR</span>
+        <div><span>DEVELOPMENT</span><i></i><span>SECURITY</span><i></i><span>ENGINEERING</span><i></i><span>TEAMS</span></div>
+      </div>
+    </section>
+
+    <section class="problem section" id="platform">
+      <div class="container split">
+        <div class="section-label reveal">01 / O PROBLEMA</div>
+        <div>
+          <h2 class="reveal">Sua aplicação está segura<br>ou <em>parece</em> estar?</h2>
+          <p class="lead reveal">
+            Aplicações modernas crescem rápido. A superfície de ataque também.
+            Configurações incorretas, endpoints expostos e falhas de validação podem
+            passar despercebidos até virarem um problema real.
+          </p>
+          <div class="stat-row reveal">
+            <div><strong data-counter="24">0</strong><span>/7 visibilidade</span></div>
+            <div><strong data-counter="100">0</strong><span>% automatizável*</span></div>
+            <div><strong data-counter="1">0</strong><span>painel central</span></div>
+          </div>
+          <small class="fineprint">*O nível de automação depende do escopo e das tecnologias avaliadas.</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="solution section dark-section">
+      <div class="container">
+        <div class="section-top">
+          <div class="section-label reveal">02 / A SOLUÇÃO</div>
+          <p class="section-kicker reveal">Visibilidade. Contexto. Ação.</p>
+        </div>
+        <div class="solution-head">
+          <h2 class="reveal">Segurança web,<br><em>sem o ruído.</em></h2>
+          <p class="reveal">Centralize suas análises em uma plataforma criada para transformar dados técnicos em decisões.</p>
+        </div>
+
+        <div class="dashboard-wrap reveal">
+          <div class="dashboard">
+            <div class="dash-top">
+              <div class="dash-brand"><span class="dot"></span> SECURITY OVERVIEW</div>
+              <div class="dash-status"><span></span> SYSTEM OPERATIONAL</div>
+            </div>
+            <div class="dash-body">
+              <aside>
+                <div class="side-item active">Overview</div>
+                <div class="side-item">Scans</div>
+                <div class="side-item">Assets</div>
+                <div class="side-item">Findings</div>
+                <div class="side-item">Reports</div>
+                <div class="side-item">Settings</div>
+              </aside>
+              <div class="dash-main">
+                <div class="dash-heading">
+                  <div><small>MONDAY, AUG 31</small><h3>Good evening.</h3></div>
+                  <button>+ New scan</button>
+                </div>
+                <div class="metric-grid">
+                  <div class="metric"><span>Total findings</span><strong>12</strong><small>↓ 18% this month</small></div>
+                  <div class="metric"><span>Critical</span><strong class="danger">01</strong><small>Needs attention</small></div>
+                  <div class="metric"><span>Security score</span><strong>78<span>/100</span></strong><small>↑ 6 points</small></div>
+                </div>
+                <div class="chart-card">
+                  <div class="chart-head"><span>Findings over time</span><small>LAST 30 DAYS ▾</small></div>
+                  <div class="fake-chart">
+                    <div class="chart-line"></div>
+                    <div class="chart-grid-line l1"></div><div class="chart-grid-line l2"></div><div class="chart-grid-line l3"></div>
+                    <div class="chart-labels"><span>01</span><span>08</span><span>15</span><span>22</span><span>30</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="features section" id="features">
+      <div class="container">
+        <div class="section-top">
+          <div class="section-label reveal">03 / RECURSOS</div>
+          <p class="section-kicker reveal">Tudo em um só lugar.</p>
+        </div>
+        <div class="feature-intro">
+          <h2 class="reveal">Do primeiro scan<br>à <em>correção.</em></h2>
+          <p class="reveal">Uma experiência construída para reduzir complexidade e dar à sua equipe uma visão clara do que importa.</p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card large reveal">
+            <div class="feature-icon">⌁</div>
+            <span class="feature-number">01</span>
+            <h3>Scanner automatizado</h3>
+            <p>Execute análises de forma padronizada e obtenha resultados organizados em poucos passos.</p>
+            <div class="feature-visual scan-visual"><span>SCANNING</span><i></i><b></b><b></b><b></b></div>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-icon">◈</div>
+            <span class="feature-number">02</span>
+            <h3>Priorização</h3>
+            <p>Entenda rapidamente o que precisa da atenção da sua equipe.</p>
+            <div class="severity"><span>CRITICAL</span><b>01</b><span>HIGH</span><b>03</b><span>MEDIUM</span><b>05</b></div>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-icon">◎</div>
+            <span class="feature-number">03</span>
+            <h3>Gestão de ativos</h3>
+            <p>Mantenha aplicações e alvos autorizados organizados em um único ambiente.</p>
+            <div class="asset-list"><span>◉ api.production</span><span>◉ web.application</span><span>◉ staging.env</span></div>
+          </article>
+
+          <article class="feature-card large reveal">
+            <div class="feature-icon">↗</div>
+            <span class="feature-number">04</span>
+            <h3>Relatórios acionáveis</h3>
+            <p>Transforme descobertas técnicas em informações que desenvolvedores, gestores e equipes de segurança conseguem utilizar.</p>
+            <div class="report-visual"><div></div><div></div><div></div><div></div><span>GENERATE REPORT →</span></div>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-icon">◌</div>
+            <span class="feature-number">05</span>
+            <h3>Histórico</h3>
+            <p>Acompanhe análises anteriores e a evolução da postura de segurança.</p>
+            <div class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-icon">+</div>
+            <span class="feature-number">06</span>
+            <h3>API & integrações</h3>
+            <p>Conecte a plataforma ao seu fluxo de trabalho quando a arquitetura estiver pronta para isso.</p>
+            <div class="code-mini">GET /api/v1/scans<br><span>200 OK</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="workflow section dark-section" id="workflow">
+      <div class="container">
+        <div class="section-top">
+          <div class="section-label reveal">04 / WORKFLOW</div>
+          <p class="section-kicker reveal">Do alvo ao resultado.</p>
+        </div>
+        <div class="workflow-head">
+          <h2 class="reveal">Cinco passos.<br><em>Mais controle.</em></h2>
+        </div>
+        <div class="steps">
+          <div class="step reveal"><span>01</span><div class="step-icon">◎</div><h3>Defina</h3><p>Escolha o ativo e o escopo autorizado da análise.</p></div>
+          <div class="step reveal"><span>02</span><div class="step-icon">⌁</div><h3>Analise</h3><p>Execute o scanner e aguarde a coleta dos resultados.</p></div>
+          <div class="step reveal"><span>03</span><div class="step-icon">◈</div><h3>Entenda</h3><p>Veja descobertas organizadas por severidade e categoria.</p></div>
+          <div class="step reveal"><span>04</span><div class="step-icon">↗</div><h3>Corrija</h3><p>Use o contexto encontrado para direcionar a correção.</p></div>
+          <div class="step reveal"><span>05</span><div class="step-icon">↻</div><h3>Verifique</h3><p>Execute uma nova análise e acompanhe a evolução.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="audience section">
+      <div class="container">
+        <div class="section-top">
+          <div class="section-label reveal">05 / PARA QUEM</div>
+          <p class="section-kicker reveal">Construído para equipes.</p>
+        </div>
+        <div class="audience-grid">
+          <article class="audience-card reveal"><span>01</span><h3>Developers</h3><p>Identifique problemas antes que eles avancem no ciclo de desenvolvimento.</p><a href="#contact">Saiba mais →</a></article>
+          <article class="audience-card reveal"><span>02</span><h3>Security</h3><p>Centralize descobertas e tenha mais visibilidade sobre os ativos analisados.</p><a href="#contact">Saiba mais →</a></article>
+          <article class="audience-card reveal"><span>03</span><h3>Business</h3><p>Reduza incerteza e transforme segurança em uma decisão mensurável.</p><a href="#contact">Saiba mais →</a></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="pricing section dark-section" id="pricing">
+      <div class="container">
+        <div class="section-top">
+          <div class="section-label reveal">06 / PLANOS</div>
+          <p class="section-kicker reveal">Comece no seu ritmo.</p>
+        </div>
+        <div class="pricing-head">
+          <h2 class="reveal">Segurança que<br><em>escala com você.</em></h2>
+          <p class="reveal">Estrutura preparada para oferecer planos diferentes conforme o produto amadurecer.</p>
+        </div>
+        <div class="pricing-grid">
+          <article class="price-card reveal"><span>COMMUNITY</span><h3>Para explorar.</h3><div class="price">R$ 0 <small>/ sempre</small></div><ul><li>✓ Análises limitadas</li><li>✓ Dashboard</li><li>✓ Resultados básicos</li><li>✓ Relatórios básicos</li></ul><a class="btn btn-outline full" href="#contact">Começar</a></article>
+          <article class="price-card featured reveal"><div class="popular">RECOMENDADO</div><span>PROFESSIONAL</span><h3>Para equipes.</h3><div class="price">R$ XX <small>/ mês</small></div><ul><li>✓ Mais análises</li><li>✓ Histórico completo</li><li>✓ Relatórios avançados</li><li>✓ Gestão de ativos</li><li>✓ Monitoramento</li></ul><a class="btn btn-primary full" href="#contact">Teste grátis</a></article>
+          <article class="price-card reveal"><span>ENTERPRISE</span><h3>Para escalar.</h3><div class="price">Custom</div><ul><li>✓ Análises em escala</li><li>✓ Múltiplos usuários</li><li>✓ API & integrações</li><li>✓ SSO</li><li>✓ Suporte prioritário</li></ul><a class="btn btn-outline full" href="#contact">Falar com especialista</a></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta section" id="contact">
+      <div class="cta-grid"></div>
+      <div class="container cta-inner">
+        <div class="eyebrow reveal"><span class="pulse"></span> SECURITY STARTS BEFORE THE ATTACK</div>
+        <h2 class="reveal">Veja o que sua<br><em>aplicação não mostra.</em></h2>
+        <p class="reveal">Uma plataforma de segurança criada para dar clareza onde antes existia incerteza.</p>
+        <a class="btn btn-primary reveal" href="mailto:contato@seudominio.com">Solicitar demonstração <span>↗</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-top">
+      <a class="brand" href="#top"><span class="brand-mark"><span></span></span><span>PROJECT<span class="muted">/SEC</span></span></a>
+      <div class="footer-links"><a href="#platform">Plataforma</a><a href="#features">Recursos</a><a href="#pricing">Planos</a><a href="#contact">Contato</a></div>
+    </div>
+    <div class="container footer-bottom"><span>© 2026 Project/Sec. All rights reserved.</span><span>Security software for authorized testing.</span></div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

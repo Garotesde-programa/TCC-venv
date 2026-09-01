@@ -12,7 +12,7 @@
         <header>
             <h1>Scanner de Vulnerabilidades</h1>
             <p class="subtitle">Misconfig • SQLi • XSS • Open Redirect • LFI • Cookies • HTTPS • Info Disclosure</p>
-            <p class="version-badge">v{{ scanner_version or '2.0' }} • uso autorizado apenas</p>
+            <p class="version-badge">v{{ scanner_version or '3.1' }} • uso autorizado apenas</p>
         </header>
 
         <div class="card">
@@ -106,13 +106,6 @@
                     <pre id="e2eToken" class="e2e-token" style="display:none"></pre>
                 </div>
                 {% endif %}
-                <div class="legal-consent">
-                    <label class="consent-label">
-                        <input type="checkbox" id="scanAuthorized" required>
-                        Confirmo que tenho autorização explícita para testar este alvo (pentest/QA próprio).
-                    </label>
-                    <p class="consent-hint">Varreduras não autorizadas podem ser ilegais. O scanner bloqueia redes privadas por padrão.</p>
-                </div>
                 <div id="formError" class="form-error" style="display:none"></div>
                 <button type="submit" class="btn" id="btnScan">Escanear</button>
                 <button type="button" class="btn btn-secondary" id="btnCancelScan" style="display:none">Cancelar scan</button>

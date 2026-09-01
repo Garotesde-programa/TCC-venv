@@ -32,7 +32,6 @@ const scanProgressFill = document.getElementById('scanProgressFill');
 const scanProgressText = document.getElementById('scanProgressText');
 const btnCancelScan = document.getElementById('btnCancelScan');
 const scanMeta = document.getElementById('scanMeta');
-const scanAuthorized = document.getElementById('scanAuthorized');
 let lastReport = null;
 let currentJobId = null;
 
@@ -688,10 +687,7 @@ form.addEventListener('submit', async (e) => {
     const e2eProfile = document.getElementById('e2e_profile')?.value?.trim() || '';
     const cloudflareTimeout = document.getElementById('cloudflare_timeout')?.value || '60000';
 
-    if (scanAuthorized && !scanAuthorized.checked) {
-        toast('Marque a confirmação de autorização para escanear');
-        return;
-    }
+
 
     const payload = { url, checks, e2e_human: e2eHuman, authorized: true };
     if (e2eAdvanced) {
