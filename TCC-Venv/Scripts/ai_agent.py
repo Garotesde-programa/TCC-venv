@@ -42,7 +42,7 @@ import scanner_site
 
 AI_BACKEND = os.getenv('SCANNER_AI_BACKEND', 'off').strip().lower()  # 'off' | 'ollama'
 OLLAMA_HOST = os.getenv('SCANNER_OLLAMA_HOST', 'http://localhost:11434').rstrip('/')
-OLLAMA_MODEL = os.getenv('SCANNER_OLLAMA_MODEL', 'qwen2.5:14b')
+OLLAMA_MODEL = os.getenv('SCANNER_OLLAMA_MODEL', 'qwen2.5:7b')
 AI_MAX_SECONDS = int(os.getenv('SCANNER_AI_MAX_SECONDS', '90'))
 AI_MAX_TURNS = int(os.getenv('SCANNER_AI_MAX_TURNS', '8'))
 AI_HTTP_TIMEOUT = int(os.getenv('SCANNER_AI_HTTP_TIMEOUT', '30'))
@@ -78,23 +78,27 @@ CHECK_DESCRIPTIONS = {
     'check_https_redirect': 'Verifica se HTTP redireciona corretamente para HTTPS.',
 }
 
-# Mapa nome->função real, construído a partir do CHECK_FUNCS já existente
-# em scanner_site.py (fonte única de verdade - se um check for adicionado
-# lá, ele aparece aqui automaticamente).
-def _build_check_map() -> dict[str, Callable]:
-    mapping: dict[str, Callable] = {}
-    for _group, funcs in scanner_site.CHECK_FUNCS.items():
-        for _label, func in funcs:
-            mapping[func.__name__] = func
+# Mapa nome_da_funcao -> (grupo, label, funcao), construído a partir do
+# CHECK_FUNCS já existente em scanner_site.py (fonte única de verdade -
+# se um check for adicionado lá, ele aparece aqui automaticamente).
+# Guardamos o "grupo" (ex. 'misconfig', 'sql') porque make_finding()
+# precisa dele pra olhar severidade/remediação/CWE corretos - o nome da
+# função (ex. 'check_security_headers') é só o identificador exposto
+# pro modelo via tool calling.
+def _build_check_map() -> dict[str, dict]:
+    mapping: dict[str, dict] = {}
+    for group, funcs in scanner_site.CHECK_FUNCS.items():
+        for label, func in funcs:
+            mapping[func.__name__] = {'group': group, 'label': label, 'func': func}
     return mapping
 
 
-CHECK_MAP: dict[str, Callable] = _build_check_map()
+CHECK_MAP: dict[str, dict] = _build_check_map()
 
 
 def _build_tools_schema() -> list[dict]:
     tools = []
-    for name, func in CHECK_MAP.items():
+    for name in CHECK_MAP:
         desc = CHECK_DESCRIPTIONS.get(name, f'Executa a checagem {name}.')
         tools.append({
             'type': 'function',
@@ -179,6 +183,47 @@ def _parse_tool_call_args(raw_args) -> dict:
     return {}
 
 
+def _run_single_check(fn_name: str, url: str, remaining_seconds: float) -> list[dict]:
+    """
+    Roda uma checagem e normaliza o retorno em findings no MESMO formato
+    que scanner_site.scan() produz (via make_finding). Importante: os
+    check_* não têm formato de retorno uniforme entre si - alguns devolvem
+    strings soltas (ex. check_security_headers), outros já devolvem
+    dicts prontos. Replicar essa normalização aqui evita o bug de tratar
+    o retorno cru como se já fosse um finding.
+    """
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
+    entry = CHECK_MAP[fn_name]
+    group, label, func = entry['group'], entry['label'], entry['func']
+    category = group.upper().replace('_', ' ')
+
+    findings: list[dict] = []
+    try:
+        executor = ThreadPoolExecutor(max_workers=1)
+        fut = executor.submit(func, url)
+        try:
+            raw = fut.result(timeout=max(remaining_seconds, 1))
+            executor.shutdown(wait=False)
+        except FuturesTimeoutError:
+            executor.shutdown(wait=False)
+            raise TimeoutError(f'checagem "{label}" excedeu o tempo restante ({remaining_seconds:.0f}s)')
+        items = raw if isinstance(raw, list) else ([raw] if raw else [])
+        for r in items:
+            # alguns checks já devolvem dict (formato make_finding); a
+            # maioria devolve string crua - normaliza os dois casos.
+            if isinstance(r, dict) and 'id' in r:
+                findings.append(r)
+            else:
+                findings.append(scanner_site.make_finding(group, category, str(r), target_url=url))
+    except Exception as exc:
+        findings.append(scanner_site.make_finding(
+            group, group.upper(), f'Erro: {exc}',
+            severity='low', confidence='low',
+        ))
+    return findings
+
+
 def _findings_brief(findings: list[dict], limit: int = 12) -> str:
     """Resumo compacto dos achados pra não estourar o contexto do modelo
     a cada turno do agente."""
@@ -220,7 +265,31 @@ def agent_scan(
         result['agent_log'] = [note]
         return result
 
-    pending = dict(CHECK_MAP)  # nome -> função, vai encolhendo conforme executa
+    # Mesma checagem de pré-voo que scan() faz: evita gastar turnos do
+    # agente (e chamadas ao modelo) tentando investigar um alvo que nem
+    # responde.
+    preflight_error = scanner_site._preflight(url)
+    if preflight_error:
+        item = scanner_site.make_finding(
+            'misconfig', 'INCONCLUSIVE', preflight_error,
+            severity='info', confidence='high',
+            remediation='Verifique se a URL está correta e acessível a partir deste servidor.',
+        )
+        return {
+            'findings': [item],
+            'meta': {
+                'scanner_version': scanner_site.SCANNER_VERSION,
+                'duration_ms': int((time.time() - started) * 1000),
+                'checks_run': [],
+                'findings_count': 1,
+                'cancelled': False,
+                'inconclusive': True,
+                'ai_backend': None,
+            },
+            'agent_log': [f'Pré-voo falhou: {preflight_error}'],
+        }
+
+    pending = {name: entry for name, entry in CHECK_MAP.items()}  # encolhe conforme executa
     all_findings: list[dict] = []
     agent_log: list[str] = []
     seen_ids: set[str] = set()
@@ -275,17 +344,14 @@ def agent_scan(
                 messages.append({'role': 'tool', 'content': f'Ferramenta {fn_name} indisponível ou já executada.'})
                 continue
 
-            func = pending.pop(fn_name)
-            label = fn_name.replace('check_', '').replace('_', ' ').title()
+            pending.pop(fn_name)
+            label = CHECK_MAP[fn_name]['label']
             agent_log.append(f'Turno {turn}: agente escolheu "{fn_name}".')
 
             if progress_cb:
                 progress_cb('agent', label, 'running')
-            try:
-                new_findings = func(url) or []
-            except Exception as exc:
-                new_findings = []
-                agent_log.append(f'Checagem {fn_name} falhou: {exc}')
+            remaining = AI_MAX_SECONDS - (time.time() - started)
+            new_findings = _run_single_check(fn_name, url, remaining)
             if progress_cb:
                 progress_cb('agent', label, 'done')
 
@@ -313,15 +379,11 @@ def agent_scan(
                 break
             if (time.time() - started) > scanner_site.MAX_SCAN_SECONDS:
                 break
-            func = CHECK_MAP[fn_name]
-            label = fn_name.replace('check_', '').replace('_', ' ').title()
+            label = CHECK_MAP[fn_name]['label']
             if progress_cb:
                 progress_cb('agent', label, 'running')
-            try:
-                new_findings = func(url) or []
-            except Exception as exc:
-                new_findings = []
-                agent_log.append(f'Checagem {fn_name} falhou: {exc}')
+            remaining = scanner_site.MAX_SCAN_SECONDS - (time.time() - started)
+            new_findings = _run_single_check(fn_name, url, remaining)
             if progress_cb:
                 progress_cb('agent', label, 'done')
             for item in new_findings:

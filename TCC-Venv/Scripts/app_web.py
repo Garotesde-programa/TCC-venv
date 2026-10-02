@@ -19,6 +19,7 @@ from flask import Flask, render_template, request, jsonify, redirect
 from scanner_site import scan, run_e2e_human, validate_scan_target, SCANNER_VERSION
 from scan_storage import init_db, save_scan, list_history, get_last_report, prune_old
 from werkzeug.middleware.proxy_fix import ProxyFix
+import ai_agent
 
 init_db()
 
@@ -468,12 +469,20 @@ def _run_scan_job(
         _update_job_progress(job_id, stage, completed['n'], total_steps)
 
     try:
-        report = scan(
-            url,
-            valid,
-            progress_cb=_progress_cb,
-            cancel_cb=lambda: _job_cancelled(job_id),
-        )
+        if ai_agent.is_enabled():
+            report = ai_agent.agent_scan(
+                url,
+                valid,
+                progress_cb=_progress_cb,
+                cancel_cb=lambda: _job_cancelled(job_id),
+            )
+        else:
+            report = scan(
+                url,
+                valid,
+                progress_cb=_progress_cb,
+                cancel_cb=lambda: _job_cancelled(job_id),
+            )
         if _job_cancelled(job_id):
             _update_job(job_id, status='cancelled', error='Scan cancelado pelo usuário')
             return
@@ -492,6 +501,7 @@ def _run_scan_job(
             ).start()
 
         ai_insights = _build_ai_insights(url, items)
+        ai_insights = ai_agent.enrich_insights(url, items, ai_insights)
         comparison = _build_comparison(url, items)
         _store_scan(url, len(items), items, checks=valid, meta=meta)
 
@@ -502,6 +512,7 @@ def _run_scan_job(
             'meta': meta,
             'scanner_version': SCANNER_VERSION,
             'ai_insights': ai_insights,
+            'agent_log': report.get('agent_log'),
             'comparison': comparison,
             'e2e_human_started': bool(e2e_human),
             'e2e_advanced_started': bool(e2e_advanced),

@@ -12,6 +12,15 @@ set SCANNER_SSL_MODE=
 set SCANNER_FORCE_HTTPS_REDIRECT=0
 set SCANNER_TRUST_PROXY=0
 
+REM Se o agente de IA local estiver habilitado (SCANNER_AI_BACKEND=ollama),
+REM garante que o Ollama e o modelo estejam prontos antes de subir o
+REM servidor - assim o launcher continua sendo "um clique" mesmo com IA.
+if "%SCANNER_AI_BACKEND%"=="ollama" (
+    if exist "%ROOT_DIR%\scripts\setup_ollama.bat" (
+        call "%ROOT_DIR%\scripts\setup_ollama.bat" %SCANNER_OLLAMA_MODEL%
+    )
+)
+
 if not exist "%ROOT_DIR%\data" mkdir "%ROOT_DIR%\data"
 set "LOG_FILE=%ROOT_DIR%\data\server.log"
 set "RUN_BAT=%ROOT_DIR%\data\_run_server.bat"

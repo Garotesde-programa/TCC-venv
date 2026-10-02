@@ -1,0 +1,68 @@
+# Sobe o scanner + o Ollama juntos. Uso:
+#   cp .env.example .env   (edite SCANNER_OLLAMA_MODEL se quiser)
+#   docker compose up -d --build
+#
+# Primeira vez demora mais: o serviço "ollama-pull" baixa o modelo
+# (alguns GB) antes da app subir. Depois disso fica em cache no volume
+# "ollama_data" e os próximos "up" são rápidos.
+#
+# Se a máquina tiver GPU NVIDIA, descomente o bloco "deploy" do serviço
+# ollama lá embaixo (precisa do NVIDIA Container Toolkit instalado).
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: scanner-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"   # exposto só pra debug local; a app fala com o nome do serviço
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    # --- GPU NVIDIA (opcional) ---
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: scanner-ollama-pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: "http://ollama:11434"
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["ollama pull ${SCANNER_OLLAMA_MODEL:-qwen2.5:14b}"]
+    restart: "no"
+
+  app:
+    build: .
+    container_name: scanner-app
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      SCANNER_HOST: "0.0.0.0"
+      SCANNER_OLLAMA_HOST: "http://ollama:11434"
+    ports:
+      - "${SCANNER_PORT:-5000}:5000"
+    volumes:
+      - ./data:/app/data
+
+volumes:
+  ollama_data:

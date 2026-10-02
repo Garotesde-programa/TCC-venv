@@ -62,6 +62,16 @@ export SCANNER_SSL_MODE="${SCANNER_SSL_MODE:-}"
 export SCANNER_FORCE_HTTPS_REDIRECT="${SCANNER_FORCE_HTTPS_REDIRECT:-0}"
 export SCANNER_TRUST_PROXY="${SCANNER_TRUST_PROXY:-0}"
 
+# Se o agente de IA local estiver habilitado (SCANNER_AI_BACKEND=ollama),
+# garante que o Ollama e o modelo estejam prontos antes de subir o
+# servidor - assim o launcher continua sendo "um clique" mesmo com IA.
+if [ "${SCANNER_AI_BACKEND:-off}" = "ollama" ]; then
+    if [ -x "$ROOT_DIR/scripts/setup_ollama.sh" ]; then
+        bash "$ROOT_DIR/scripts/setup_ollama.sh" "${SCANNER_OLLAMA_MODEL:-qwen2.5:14b}" || \
+            echo "[AVISO] Setup do Ollama falhou - o scanner vai subir sem IA (fallback automático)."
+    fi
+fi
+
 # 4) Se a porta ja estiver em uso, assume que o servidor ja esta rodando.
 port_in_use() {
     if command -v curl >/dev/null 2>&1; then
