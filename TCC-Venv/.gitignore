@@ -15,3 +15,4 @@ ollama_data/
 .DS_Store
 .pytest_cache/
 .coverage
+*.pid
