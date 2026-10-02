@@ -16,3 +16,4 @@ ollama_data/
 .pytest_cache/
 .coverage
 *.pid
+*.pid
